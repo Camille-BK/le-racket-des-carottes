@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Le Racket des Carottes — Prototype 3D</title>
+<style>
+*{box-sizing:border-box}body{margin:0;overflow:hidden;background:#b8d6bd;font-family:system-ui,-apple-system,sans-serif;color:#243c26}canvas{display:block;touch-action:none}
+#hud{position:fixed;top:14px;left:14px;right:14px;display:flex;justify-content:space-between;gap:12px;pointer-events:none}
+.panel{background:#fffdf0e8;border:2px solid #ffffffa8;border-radius:17px;padding:10px 15px;box-shadow:0 5px 22px #304b2530;font-weight:750}
+#notice{position:fixed;top:83px;left:50%;transform:translateX(-50%);background:#fff8dbed;border-radius:14px;padding:10px 16px;text-align:center;max-width:90vw;font-weight:800;opacity:0;transition:opacity .2s;pointer-events:none}
+#controls{position:fixed;bottom:16px;left:14px;right:14px;display:flex;justify-content:space-between;align-items:end;gap:10px}
+#dpad{display:grid;grid-template-columns:repeat(3,48px);grid-template-rows:repeat(2,48px);gap:5px}
+button{border:0;border-radius:14px;background:#fff9e9ed;color:#354629;box-shadow:0 3px 10px #25391d45;font-weight:800;touch-action:none;cursor:pointer}
+#dpad button{font-size:24px}#dpad .up{grid-column:2}.actions{display:flex;gap:9px;align-items:end}.actions button{padding:14px 16px;min-height:52px}#attack{background:#ffb64a;font-size:16px}#swap{background:#e4f0cc}
+#overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#1d321c99;padding:22px}
+#dialog{max-width:480px;text-align:center;background:#fff9e9;border-radius:26px;padding:27px;box-shadow:0 20px 80px #14280b77}
+h1{margin:0 0 9px;font-size:clamp(27px,6vw,42px)}p{line-height:1.5}#start{padding:14px 25px;background:#f6b24a;font-size:18px}
+small{font-weight:500}@media(min-width:900px){#controls{bottom:25px;left:25px;right:25px}#dpad{opacity:.65}}
+</style>
+</head>
+<body>
+<div id="hud"><div class="panel">🥕 Carottes : <span id="score">0</span>/<span id="target">10</span><br><small id="hero">Quoccinelle</small></div><div class="panel">⏱️ <span id="clock">90</span> s<br><small>Papa vise la barrière !</small></div></div>
+<div id="notice"></div>
+<div id="controls"><div id="dpad"><button class="up" data-dir="up">▲</button><button data-dir="left">◀</button><button data-dir="down">▼</button><button data-dir="right">▶</button></div><div class="actions"><button id="swap">Changer 🐴</button><button id="attack">ATTAQUE !</button></div></div>
+<div id="overlay"><div id="dialog"><h1>🥕 Le Racket des Carottes</h1><p>Dans un pré en 3D, poursuis Papa et récupère ses carottes !</p><p><b>Ordinateur :</b> ZQSD / WASD ou flèches pour bouger, Espace pour attaquer, Tab pour changer de poney.<br><b>Téléphone :</b> commandes à l'écran.</p><p><small>Premier prototype jouable : les personnages sont des modèles 3D provisoires, pas encore les versions définitives.</small></p><button id="start">Entrer dans le pré 🌿</button></div></div>
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js';
+const scene=new THREE.Scene();scene.background=new THREE.Color('#b8d9ef');scene.fog=new THREE.Fog('#b8d9ef',30,68);
+const camera=new THREE.PerspectiveCamera(48,innerWidth/innerHeight,.1,110);camera.position.set(0,17,22);
+const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(innerWidth,innerHeight);renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;document.body.prepend(renderer.domElement);
+scene.add(new THREE.HemisphereLight('#f4faff','#7c9856',2.2));
+const sun=new THREE.DirectionalLight('#fff1cc',2.5);sun.position.set(-9,18,12);sun.castShadow=true;sun.shadow.mapSize.set(1024,1024);sun.shadow.camera.left=-25;sun.shadow.camera.right=25;sun.shadow.camera.top=25;sun.shadow.camera.bottom=-25;scene.add(sun);
+const mat=(c)=>new THREE.MeshStandardMaterial({color:c,roughness:.91});
+const grass=mat('#75ad59'),wood=mat('#916644'),leaf=mat('#4c9150'),trunk=mat('#795638'),orange=mat('#f48b28'),cream=mat('#f3e7b4');
+function shape(parent,geo,material,x=0,y=0,z=0){const m=new THREE.Mesh(geo,material);m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;parent.add(m);return m}
+function box(p,w,h,d,m,x,y,z){return shape(p,new THREE.BoxGeometry(w,h,d),m,x,y,z)}
+function ball(p,r,m,x,y,z,sx=1,sy=1,sz=1){const o=shape(p,new THREE.SphereGeometry(r,14,10),m,x,y,z);o.scale.set(sx,sy,sz);return o}
+box(scene,48,.4,39,grass,0,-.25,0);
+const rand=(a,b)=>a+Math.random()*(b-a);
+for(let i=0;i<185;i++){const x=rand(-23,23),z=rand(-19,19);if(Math.abs(x)<2&&Math.abs(z)<2)continue;const f=new THREE.Group();f.position.set(x,.02,z);scene.add(f);ball(f,.065,mat(i%3?'#f6e1a3':'#fff2f0'),0,.13,0);box(f,.025,.19,.025,leaf,0,.05,0)}
+for(let x=-23;x<=23;x+=3){for(const z of [-19,19]){box(scene,.22,1.55,.22,wood,x,.77,z);if(x<23){box(scene,3,.16,.16,wood,x+1.5,.56,z);box(scene,3,.16,.16,wood,x+1.5,1.13,z)}}}
+for(let z=-19;z<=19;z+=3){for(const x of [-23,23]){box(scene,.22,1.55,.22,wood,x,.77,z);if(z<19){box(scene,.16,.16,3,wood,x,.56,z+1.5);box(scene,.16,.16,3,wood,x,1.13,z+1.5)}}}
+function tree(x,z){const t=new THREE.Group();t.position.set(x,0,z);scene.add(t);box(t,.45,2.5,.45,trunk,0,1.2,0);ball(t,1.4,leaf,0,3.05,0,1.15,.9,1.15);ball(t,.95,leaf,-.65,2.65,0);ball(t,.9,leaf,.7,2.75,.25)}
+[[-19,-14],[-12,-16],[16,-15],[20,10],[-19,11],[12,16]].forEach(([x,z])=>tree(x,z));
+const barn=new THREE.Group();barn.position.set(13,0,-16);scene.add(barn);box(barn,6,4,4,mat('#ba7253'),0,2,0);const roof=box(barn,6.8,.45,4.9,mat('#69483c'),0,4.3,0);roof.rotation.z=.08;box(barn,2.2,3,.12,mat('#604632'),0,1.5,2.06);
+function pony(coat,mane,mark=false,scale=1){const g=new THREE.Group();const c=mat(coat),hair=mat(mane),hoof=mat('#41382f');ball(g,.76,c,0,1.05,0,1.35,.86,.77);ball(g,.42,c,0,1.5,-.87,.85,1.3,.95);ball(g,.31,c,0,1.24,-1.22,1,.67,1.1);for(const x of [-.57,.57])for(const z of [-.47,.47]){box(g,.23,.76,.24,c,x,.48,z);box(g,.26,.16,.28,hoof,x,.1,z)}ball(g,.29,hair,0,1.96,-.8,1.1,.75,1.2);for(let i=0;i<5;i++)ball(g,.15,hair,rand(-.27,.27),1.88+rand(-.13,.16),-.94-rand(0,.2),.6,1.5,1);ball(g,.21,hair,0,1.23,.9,.85,1.3,1.5);for(const x of [-.29,.29]){ball(g,.075,mat('#171711'),x,1.64,-1.13);ball(g,.12,c,x,1.96,-.78,.55,1.4,.6)}if(mark)box(g,.12,.38,.06,cream,0,1.66,-1.23);g.scale.setScalar(scale);scene.add(g);return g}
+const ponies=[pony('#ae633b','#d68c3c',false,1.1),pony('#a85b31','#f4d17a',true,1),pony('#49302a','#bdb59d',false,.78)];
+const papa=new THREE.Group();scene.add(papa);const pants=mat('#655e46'),shirt=mat('#8d9d78'),skin=mat('#e8b89a');box(papa,.7,1.18,.46,shirt,0,1.8,0);ball(papa,.31,skin,0,2.64,0);box(papa,.35,.9,.35,pants,-.2,.7,0);box(papa,.35,.9,.35,pants,.2,.7,0);box(papa,.44,.32,.5,mat('#464638'),-.2,.18,.04);box(papa,.44,.32,.5,mat('#464638'),.2,.18,.04);box(papa,.85,.14,.85,mat('#756c45'),0,2.91,0);box(papa,.43,.08,.31,mat('#756c45'),0,2.9,-.47);box(papa,.23,.83,.25,shirt,-.5,1.85,0);box(papa,.23,.83,.25,shirt,.5,1.85,0);
+const bucket=shape(papa,new THREE.CylinderGeometry(.3,.24,.48,12),mat('#9d9d9d'),.68,1.22,-.2);
+const carrotGeo=new THREE.ConeGeometry(.16,.52,9),carrots=[];function carrot(x,z){const g=new THREE.Group();g.position.set(x,.32,z);scene.add(g);shape(g,carrotGeo,orange,0,0,0).rotation.z=Math.PI;ball(g,.12,leaf,0,.28,0,.7,.9,.7);carrots.push(g)}
+const target=10;document.getElementById('target').textContent=target;
+for(let i=0;i<target;i++)carrot(rand(-13,13),rand(-10,10));
+let active=0,score=0,time=90,running=false,ended=false,cooldown=0,papaStun=0,toastTime=0;const keys=new Set(),touch=new Set(),clock=new THREE.Clock();
+const heroNames=['Quoccinelle','Mandarine','Pétrole'],specials=['C’EST PAS DU GRAS, C’EST DE LA PUISSANCE !','L’ORÉAL, PARCE QUE JE LE VAUX BIEN !','PETITE MAIS DANGEREUSE !'];
+ponies[0].position.set(-4,0,4);ponies[1].position.set(-6,0,6);ponies[2].position.set(-7,0,3);papa.position.set(6,0,-4);
+function notice(s){document.getElementById('notice').textContent=s;document.getElementById('notice').style.opacity=1;toastTime=2.4}
+function swap(){if(!running)return;active=(active+1)%3;document.getElementById('hero').textContent=heroNames[active];notice('À toi, '+heroNames[active]+' !')}
+function attack(){if(!running||cooldown>0)return;cooldown=3;const p=ponies[active];const dist=p.position.distanceTo(papa.position);notice(specials[active]);if(dist<4.1){papaStun=2.5;const dx=papa.position.x-p.position.x,dz=papa.position.z-p.position.z,d=Math.hypot(dx,dz)||1;papa.position.x=Math.max(-20,Math.min(20,papa.position.x+dx/d*2));papa.position.z=Math.max(-16,Math.min(16,papa.position.z+dz/d*2));for(let i=0;i<2;i++)carrot(papa.position.x+rand(-2,2),papa.position.z+rand(-2,2))}}
+function end(win){running=false;ended=true;document.getElementById('overlay').style.display='flex';document.querySelector('#dialog h1').textContent=win?'PAPA A ENCORE ÉTÉ VICTIMISÉ ! 🥕':'Papa a sauvé ses carottes !';document.querySelector('#dialog p').innerHTML=win?'3 poneys, 1 Taiho, 0 carotte, 0 dignité.':'Papa a atteint la sortie avant la fin du racket.';document.getElementById('start').textContent='Rejouer';}
+function reset(){score=0;time=90;active=0;cooldown=0;papaStun=0;ponies[0].position.set(-4,0,4);ponies[1].position.set(-6,0,6);ponies[2].position.set(-7,0,3);papa.position.set(6,0,-4);for(const c of carrots)scene.remove(c);carrots.length=0;for(let i=0;i<target;i++)carrot(rand(-13,13),rand(-10,10));document.getElementById('score').textContent='0';document.getElementById('hero').textContent=heroNames[0];running=true;ended=false;document.getElementById('overlay').style.display='none'}
+document.getElementById('start').onclick=reset;document.getElementById('swap').onclick=swap;document.getElementById('attack').onclick=attack;
+document.querySelectorAll('[data-dir]').forEach(b=>{const d=b.dataset.dir;b.addEventListener('pointerdown',e=>{e.preventDefault();touch.add(d);b.setPointerCapture(e.pointerId)});for(const evt of ['pointerup','pointercancel','lostpointercapture'])b.addEventListener(evt,()=>touch.delete(d))});
+addEventListener('keydown',e=>{const k=e.key.toLowerCase();if(['arrowup','arrowdown','arrowleft','arrowright',' ','tab'].includes(k))e.preventDefault();if(!keys.has(k)){if(k==='tab')swap();if(k===' ')attack()}keys.add(k)});addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
+function loop(){requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),.05);if(running){time-=dt;document.getElementById('clock').textContent=Math.max(0,Math.ceil(time));cooldown=Math.max(0,cooldown-dt);papaStun=Math.max(0,papaStun-dt);toastTime-=dt;if(toastTime<=0)document.getElementById('notice').style.opacity=0;
+const p=ponies[active];let x=0,z=0;if(keys.has('a')||keys.has('q')||keys.has('arrowleft')||touch.has('left'))x--;if(keys.has('d')||keys.has('arrowright')||touch.has('right'))x++;if(keys.has('w')||keys.has('z')||keys.has('arrowup')||touch.has('up'))z--;if(keys.has('s')||keys.has('arrowdown')||touch.has('down'))z++;
+const n=Math.hypot(x,z);if(n){p.position.x+=x/n*7*dt;p.position.z+=z/n*7*dt;p.rotation.y=Math.atan2(-x,-z)}p.position.x=THREE.MathUtils.clamp(p.position.x,-21,21);p.position.z=THREE.MathUtils.clamp(p.position.z,-17,17);
+for(let i=0;i<ponies.length;i++)if(i!==active){const other=ponies[i],a=performance.now()/1000+i*2.1;other.position.x=THREE.MathUtils.lerp(other.position.x,p.position.x+Math.sin(a)*2.5,dt*.8);other.position.z=THREE.MathUtils.lerp(other.position.z,p.position.z+Math.cos(a)*2.5,dt*.8)}
+if(!papaStun){const dx=20-papa.position.x,dz=-17-papa.position.z,d=Math.hypot(dx,dz);papa.position.x+=dx/d*1.35*dt;papa.position.z+=dz/d*1.35*dt;papa.rotation.y=Math.atan2(-dx,-dz);if(d<1.5)end(false)}else papa.rotation.z=Math.sin(performance.now()*.016)*.2;
+for(let i=carrots.length-1;i>=0;i--){const c=carrots[i];c.rotation.y+=dt*1.4;if(c.position.distanceTo(p.position)<1.1){scene.remove(c);carrots.splice(i,1);score++;document.getElementById('score').textContent=score;if(score>=target)end(true)}}if(time<=0)end(false)}
+const follow=ponies[active].position;camera.position.lerp(new THREE.Vector3(follow.x,16.5,follow.z+19),.035);camera.lookAt(follow.x,0,follow.z-1);renderer.render(scene,camera)}
+loop();
+</script></body></html>
