@@ -1,7 +1,7 @@
 # Le Racket des Carottes — Cahier de conception
 
 ## Vision
-Jeu de poursuite humoristique dans un grand pré en 3D cartoon, vu en trois quarts. **Ce n'est pas un jeu de combat** : pas d'arène de type Street Fighter. Le joueur incarne tour à tour trois poneys et tente de dérober les carottes de Papa avant qu'il ne s'échappe du pré.
+Jeu de poursuite humoristique dans un grand pré en 3D cartoon, vu en trois quarts. Le joueur incarne tour à tour trois poneys et tente de dérober les carottes de Papa avant qu'il ne s'échappe du pré.
 
 ## Décor
 Prairie verdoyante avec relief léger, fleurs, arbres, clôtures en bois, barrière et petite écurie. Caméra trois quarts, déplacements fluides, éclairage naturel. Direction artistique soignée, personnages reconnaissables et animés : pas d'emojis ni de portraits découpés servant de sprites.
